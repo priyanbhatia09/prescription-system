@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Medicine Expert System</title>
+  <style>
+    :root{
+      --bg1: #6a11cb;
+      --bg2: #2575fc;
+      --card: rgba(255,255,255,0.12);
+      --glass: rgba(255,255,255,0.08);
+      --accent: #ffca28;
+      --muted: rgba(255,255,255,0.8);
+    }
+    *{box-sizing:border-box}
+    body {
+      font-family: "Poppins", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      margin: 0; padding: 24px; color: white;
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 28px auto;
+      background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+      padding: 28px;
+      border-radius: 18px;
+      box-shadow: 0 12px 40px rgba(10,10,30,0.35);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    header{display:flex;align-items:center;gap:16px}
+    header .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,#fff2cc,#ffd88a);display:flex;align-items:center;justify-content:center;color:#06132b;font-weight:700;font-size:20px}
+    header h1{font-size:20px;margin:0}
+    header p{margin:0;color:var(--muted);font-size:13px}
+
+    .search-row{display:flex;gap:12px;margin-top:18px}
+    .search-input{flex:1;display:flex;gap:8px;align-items:center}
+    input[type=text]{flex:1;padding:12px 14px;border-radius:12px;border:none;background:var(--card);color:inherit;font-size:15px;outline:none}
+    button.primary{background:var(--accent);border:none;padding:12px 18px;border-radius:12px;font-weight:700;cursor:pointer}
+    button.secondary{background:transparent;border:1px solid rgba(255,255,255,0.08);padding:10px 14px;border-radius:10px;color:var(--muted);cursor:pointer}
+
+    .hint{margin-top:10px;color:var(--muted);font-size:13px}
+
+    .results{margin-top:22px;display:grid;grid-template-columns:1fr 340px;gap:16px}
+    .card{background:var(--glass);padding:16px;border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+
+    .med-list .med{background:rgba(255,255,255,0.03);padding:10px;border-radius:10px;margin-bottom:10px}
+    .suggestions .sugg{display:flex;gap:8px;align-items:flex-start;margin-bottom:10px}
+    .badge{background:rgba(255,255,255,0.06);padding:6px 8px;border-radius:999px;font-size:12px}
+
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+
+    /* responsive */
+    @media (max-width:820px){
+      .results{grid-template-columns:1fr;}
+      .container{padding:18px}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">SM</div>
+      <div>
+        <h1>Smart Medicine Expert System</h1>
+        <p>Educational prototype — not a replacement for professional medical advice.</p>
+      </div>
+    </header>
+
+    <div class="search-row">
+      <div class="search-input">
+        <input id="symptomInput" type="text" placeholder="Type a symptom (e.g. fever, cough, headache)..." aria-label="symptom-input" />
+        <button class="primary" id="searchBtn">Search</button>
+      </div>
+      <button class="secondary" id="clearBtn">Clear</button>
+    </div>
+
+    <div class="hint">Tip: press <strong>Enter</strong> to search. Try: <span class="badge">fever</span> <span class="badge">cough</span> <span class="badge">diarrhea</span></div>
+
+    <div class="results">
+      <div class="card" id="leftCard">
+        <h3 id="symptomTitle">Search results will appear here</h3>
+        <div id="medicines" class="med-list" style="margin-top:12px"></div>
+      </div>
+
+      <div class="card" id="rightCard">
+        <h4>Helpful Suggestions</h4>
+        <div id="suggestions" class="suggestions" style="margin-top:12px;color:var(--muted)"></div>
+
+        <hr style="border:none;height:12px" />
+
+        <h4>Important Safety</h4>
+        <div style="margin-top:8px;color:var(--muted);font-size:13px">
+          This tool provides suggested medicines and general advice as examples only. Do not self-prescribe for serious symptoms (shortness of breath, severe chest pain, high fever with confusion, severe bleeding, loss of consciousness). Seek immediate professional care if symptoms are severe.
+        </div>
+      </div>
+    </div>
+
+    <footer>Built with care • Data stored only in browser memory</footer>
+  </div>
+
+  <script>
+    // Knowledge base with synonyms for better matching
+    const KB = {
+      fever: {
+        aliases: ['fever','high temperature','temperature'],
+        medicines: [
+          'Paracetamol (500–1000 mg every 4–6 hours as needed, max 3g/day)',
+          'Ibuprofen (200–400 mg every 4–6 hours as needed)',
+          'Tepid sponge',
+          'ORS if dehydrated'
+        ],
+        suggestions: [
+          'Stay hydrated',
+          'Rest and avoid strenuous activity',
+          'Monitor temperature; seek care if >39°C or persistent >48–72 hrs'
+        ]
+      },
+      cough: {
+        aliases: ['cough','coughing','wet cough','dry cough'],
+        medicines: [
+          'Dextromethorphan-based syrup (for dry cough)',
+          'Guaifenesin (expectoration enhancer) for productive cough',
+          'Ambroxol or Bromhexine (mucolytics)'
+        ],
+        suggestions: [
+          'Steam inhalation and warm fluids',
+          'Avoid smoking and dusty environments',
+          'See a doctor for persistent cough >2 weeks'
+        ]
+      },
+      headache: {
+        aliases: ['headache','head pain','migraine'],
+        medicines: [
+          'Paracetamol 500–1000 mg',
+          'Ibuprofen 200–400 mg (if no contraindication)',
+          'Anti-migraine medications (only under physician advice)'
+        ],
+        suggestions: [
+          'Rest in a quiet, dark place',
+          'Hydrate and avoid triggers (strong smells, screens)',
+          'Seek urgent care for sudden severe headache or neurological signs'
+        ]
+      },
+      diarrhea: {
+        aliases: ['diarrhea','loose motion','loose motions','loose stools'],
+        medicines: [
+          'Oral Rehydration Solution (ORS)',
+          'Zinc supplements (children)',
+          'Loperamide (adult symptomatic use only)'
+        ],
+        suggestions: [
+          'Maintain hydration with ORS or clear fluids',
+          'Avoid dairy and oily foods until recovered',
+          'See doctor if high fever, blood in stool, or signs of dehydration'
+        ]
+      },
+      sore_throat: {
+        aliases: ['sore throat','throat pain','throat ache'],
+        medicines: [
+          'Warm saline gargles',
+          'Lozenges or throat sprays',
+          'Analgesics e.g. Paracetamol for pain'
+        ],
+        suggestions: [
+          'Gargle warm salt water several times daily',
+          'Avoid irritants (smoke, spicy food)',
+          'See a clinician for severe or worsening symptoms'
+        ]
+      },
+      vomiting: {
+        aliases: ['vomit','vomiting','throwing up','nausea'],
+        medicines: [
+          'ORS for hydration',
+          'Antiemetic such as Domperidone (physician advice)'
+        ],
+        suggestions: [
+          'Take small sips of clear fluids',
+          'Avoid solid food until vomiting subsides',
+          'Seek care if unable to keep fluids down or blood present'
+        ]
+      }
+    };
+
+    // Utility: normalize input
+    function norm(s){ return (s||'').toString().trim().toLowerCase(); }
+
+    // Try to find the KB key matching the user input (supports partial and alias matching)
+    function findKBKey(input){
+      const q = norm(input);
+      if(!q) return null;
+
+      // exact alias first
+      for(const key of Object.keys(KB)){
+        const aliases = KB[key].aliases;
+        for(let i=0;i<aliases.length;i++){
+          if(q === aliases[i]) return key;
+        }
+      }
+
+      // substring match in aliases
+      for(const key of Object.keys(KB)){
+        const aliases = KB[key].aliases;
+        for(let i=0;i<aliases.length;i++){
+          const a = aliases[i];
+          if(a.indexOf(q) !== -1 || q.indexOf(a) !== -1) return key;
+        }
+      }
+
+      // partial word match (split by space)
+      const parts = q.split(' ').filter(Boolean);
+      for(const key of Object.keys(KB)){
+        const aliases = KB[key].aliases;
+        for(let i=0;i<aliases.length;i++){
+          const a = aliases[i];
+          for(let j=0;j<parts.length;j++){
+            const p = parts[j];
+            if(p && a.indexOf(p) !== -1) return key;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    // Render results
+    function renderResult(key){
+      const titleEl = document.getElementById('symptomTitle');
+      const medsEl = document.getElementById('medicines');
+      const suggEl = document.getElementById('suggestions');
+
+      if(!key){
+        titleEl.textContent = 'No matching symptom found';
+        medsEl.innerHTML = '<div style="color:var(--muted)">Try searching for common words: fever, cough, headache, diarrhea</div>';
+        suggEl.innerHTML = '';
+        return;
+      }
+
+      const data = KB[key];
+      // capitalize words in alias
+      const raw = (data.aliases[0] || key).replace(/_/g,' ');
+      const parts = raw.split(' ').filter(Boolean);
+      const capitalized = parts.map(p => p.charAt(0).toUpperCase()+p.slice(1)).join(' ');
+      titleEl.textContent = capitalized;
+
+      medsEl.innerHTML = '';
+      for(let i=0;i<data.medicines.length;i++){
+        const m = data.medicines[i];
+        const d = document.createElement('div'); d.className='med'; d.innerHTML = '💊 <strong>'+escapeHtml(m)+'</strong>'; medsEl.appendChild(d);
+      }
+
+      suggEl.innerHTML = '';
+      for(let i=0;i<data.suggestions.length;i++){
+        const s = data.suggestions[i];
+        const wrap = document.createElement('div'); wrap.className='sugg'; wrap.innerHTML = '<div class="badge">Tip</div><div style="color:var(--muted)">'+escapeHtml(s)+'</div>'; suggEl.appendChild(wrap);
+      }
+    }
+
+    // HTML-escape without using regex backslashes in replacement
+    function escapeHtml(str){
+      const map = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' };
+      const arr = (''+str).split('');
+      for(let i=0;i<arr.length;i++){
+        if(map[arr[i]]) arr[i] = map[arr[i]];
+      }
+      return arr.join('');
+    }
+
+    // Main search function wired to button and Enter key
+    function searchMedicine(){
+      const input = document.getElementById('symptomInput').value;
+      const key = findKBKey(input);
+      renderResult(key);
+    }
+
+    // Clear
+    function clearAll(){ document.getElementById('symptomInput').value=''; renderResult(null); document.getElementById('symptomInput').focus(); }
+
+    // Wire events
+    document.getElementById('searchBtn').addEventListener('click', searchMedicine);
+    document.getElementById('clearBtn').addEventListener('click', clearAll);
+
+    // Enter triggers search when focus is in input
+    document.getElementById('symptomInput').addEventListener('keydown', function(e){ if(e.key === 'Enter'){ e.preventDefault(); searchMedicine(); } });
+
+    // initial render
+    renderResult(null);
+  </script>
+</body>
+</html>
